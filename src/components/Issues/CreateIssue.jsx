@@ -10,6 +10,7 @@ const CreateIssue = ({ onCancel }) => {
   const { addIssue } = useIssues();
   const { addNotification } = useNotifications();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -17,7 +18,10 @@ const CreateIssue = ({ onCancel }) => {
     priority: 'medium',
     location: '',
     tags: [],
+    // 👇 we store BASE64 strings here, not File objects
+    attachments: [],
   });
+
   const [newTag, setNewTag] = useState('');
   const [errors, setErrors] = useState({});
 
@@ -48,15 +52,44 @@ const CreateIssue = ({ onCancel }) => {
     return Object.keys(newErrors).length === 0;
   };
 
+  // 🔥 Convert selected files to base64 and store them in attachments[]
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files || []);
+    const maxSize = 10 * 1024 * 1024; // 10MB
+
+    files.forEach((file) => {
+      if (file.size > maxSize) {
+        alert(`File "${file.name}" is larger than 10MB and will be skipped.`);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64 = reader.result; // "data:image/png;base64,...."
+        setFormData((prev) => ({
+          ...prev,
+          attachments: [...prev.attachments, base64],
+        }));
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // allow selecting same file again later
+    e.target.value = '';
+  };
+
+  const removeAttachment = (indexToRemove) => {
+    setFormData((prev) => ({
+      ...prev,
+      attachments: prev.attachments.filter((_, i) => i !== indexToRemove),
+    }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     if (!user) {
-      // User must be logged in to submit an issue
       alert('Please log in to submit an issue.');
       return;
     }
@@ -64,17 +97,18 @@ const CreateIssue = ({ onCancel }) => {
     setIsSubmitting(true);
 
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
+      // we already have base64 strings in attachments, so just pass them
       addIssue({
         ...formData,
         status: 'submitted',
         citizenId: user.id,
         citizenName: user.name,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       });
 
-      // Add notification for successful submission
       addNotification({
         userId: user.id,
         title: 'Issue Submitted Successfully',
@@ -95,7 +129,7 @@ const CreateIssue = ({ onCancel }) => {
     if (newTag.trim() && !formData.tags.includes(newTag.trim()) && formData.tags.length < 5) {
       setFormData({
         ...formData,
-        tags: [...formData.tags, newTag.trim()]
+        tags: [...formData.tags, newTag.trim()],
       });
       setNewTag('');
     }
@@ -104,7 +138,7 @@ const CreateIssue = ({ onCancel }) => {
   const removeTag = (tagToRemove) => {
     setFormData({
       ...formData,
-      tags: formData.tags.filter(tag => tag !== tagToRemove)
+      tags: formData.tags.filter((tag) => tag !== tagToRemove),
     });
   };
 
@@ -127,7 +161,9 @@ const CreateIssue = ({ onCancel }) => {
         </button>
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Report an Issue</h1>
-          <p className="text-gray-600 mt-1">Describe the issue you'd like your representatives to address</p>
+          <p className="text-gray-600 mt-1">
+            Describe the issue you'd like your representatives to address
+          </p>
         </div>
       </div>
 
@@ -136,16 +172,18 @@ const CreateIssue = ({ onCancel }) => {
         <form onSubmit={handleSubmit} className="p-8 space-y-8">
           {/* Title */}
           <div>
-            <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Issue Title *
             </label>
             <input
-              id="title"
               type="text"
               value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className={`input-field ${errors.title ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
-              placeholder="Enter a clear, descriptive title for your issue"
+              onChange={(e) =>
+                setFormData({ ...formData, title: e.target.value })
+              }
+              className={`input-field ${
+                errors.title ? 'border-red-300 focus:border-red-500' : ''
+              }`}
               maxLength={200}
             />
             <div className="flex justify-between items-center mt-1">
@@ -161,20 +199,23 @@ const CreateIssue = ({ onCancel }) => {
             </div>
           </div>
 
-          {/* Category and Priority */}
+          {/* Category & Priority */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Category *
               </label>
               <select
-                id="category"
                 value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className={`input-field ${errors.category ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                onChange={(e) =>
+                  setFormData({ ...formData, category: e.target.value })
+                }
+                className={`input-field ${
+                  errors.category ? 'border-red-300 focus:border-red-500' : ''
+                }`}
               >
                 <option value="">Select a category</option>
-                {categories.map(category => (
+                {categories.map((category) => (
                   <option key={category.id} value={category.name}>
                     {category.name}
                   </option>
@@ -189,13 +230,14 @@ const CreateIssue = ({ onCancel }) => {
             </div>
 
             <div>
-              <label htmlFor="priority" className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">-
                 Priority Level
               </label>
               <select
-                id="priority"
                 value={formData.priority}
-                onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, priority: e.target.value })
+                }
                 className="input-field"
               >
                 <option value="low">Low - Minor inconvenience</option>
@@ -208,18 +250,21 @@ const CreateIssue = ({ onCancel }) => {
 
           {/* Location */}
           <div>
-            <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Location (Optional)
             </label>
             <div className="relative">
-              <MapPin size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <MapPin
+                size={20}
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+              />
               <input
-                id="location"
                 type="text"
                 value={formData.location}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, location: e.target.value })
+                }
                 className="input-field pl-10"
-                placeholder="Where is this issue located? (e.g., Main Street, City Park)"
                 maxLength={100}
               />
             </div>
@@ -238,7 +283,6 @@ const CreateIssue = ({ onCancel }) => {
                   onChange={(e) => setNewTag(e.target.value)}
                   onKeyPress={handleKeyPress}
                   className="input-field flex-1"
-                  placeholder="Add a tag (e.g., urgent, safety, downtown)"
                   maxLength={20}
                 />
                 <button
@@ -250,7 +294,7 @@ const CreateIssue = ({ onCancel }) => {
                   <Plus size={16} />
                 </button>
               </div>
-              
+
               {formData.tags.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {formData.tags.map((tag, index) => (
@@ -270,25 +314,23 @@ const CreateIssue = ({ onCancel }) => {
                   ))}
                 </div>
               )}
-              
-              <p className="text-xs text-gray-500">
-                Add up to 5 tags to help categorize your issue. Tags help others find and understand your issue better.
-              </p>
             </div>
           </div>
 
           {/* Description */}
           <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Detailed Description *
             </label>
             <textarea
-              id="description"
               rows={8}
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className={`input-field resize-none ${errors.description ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
-              placeholder="Provide a detailed description of the issue. Include what happened, when it occurred, and how it affects you or the community. The more details you provide, the better representatives can understand and address your concern."
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
+              className={`input-field resize-none ${
+                errors.description ? 'border-red-300 focus:border-red-500' : ''
+              }`}
               maxLength={2000}
             />
             <div className="flex justify-between items-center mt-1">
@@ -304,60 +346,72 @@ const CreateIssue = ({ onCancel }) => {
             </div>
           </div>
 
-          {/* File Upload Placeholder */}
+          {/* Attachments */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Attachments (Optional)
             </label>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors">
+
+            <div
+              className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors cursor-pointer"
+              onClick={() => document.getElementById('imageUpload').click()}
+            >
               <Upload size={32} className="mx-auto text-gray-400 mb-3" />
               <p className="text-sm text-gray-600 mb-2">
-                Drop files here or click to upload
+                Drop images here or click to upload
               </p>
               <p className="text-xs text-gray-500 mb-4">
-                PNG, JPG, PDF up to 10MB each (Feature coming soon)
+                PNG, JPG up to 10MB each
               </p>
-              <button
-                type="button"
-                disabled
-                className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Choose Files
-              </button>
             </div>
+
+            <input
+              id="imageUpload"
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={handleFileChange}
+            />
+
+            {/* Preview */}
+            {formData.attachments.length > 0 && (
+              <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+                {formData.attachments.map((src, index) => (
+                  <div key={index} className="relative">
+                    <img
+                      src={src}
+                      alt="Attachment preview"
+                      className="h-32 w-full object-cover rounded-lg shadow"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeAttachment(index)}
+                      className="absolute top-1 right-1 bg-white rounded-full p-1 shadow hover:bg-gray-100"
+                    >
+                      <X size={14} className="text-red-500" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Tips */}
+          {/* Tips & Actions (unchanged) */}
           <div className="bg-primary-50 border border-primary-200 rounded-lg p-6">
             <h4 className="font-semibold text-primary-900 mb-3 flex items-center">
               <AlertCircle size={20} className="mr-2" />
               Tips for effective issue reporting
             </h4>
             <ul className="text-sm text-primary-800 space-y-2">
-              <li className="flex items-start">
-                <span className="text-primary-600 mr-2">•</span>
-                Be specific about the problem and its impact on you or the community
-              </li>
-              <li className="flex items-start">
-                <span className="text-primary-600 mr-2">•</span>
-                Include relevant dates, times, and locations to help with investigation
-              </li>
-              <li className="flex items-start">
-                <span className="text-primary-600 mr-2">•</span>
-                Suggest potential solutions if you have ideas or recommendations
-              </li>
-              <li className="flex items-start">
-                <span className="text-primary-600 mr-2">•</span>
-                Use respectful and professional language throughout your report
-              </li>
-              <li className="flex items-start">
-                <span className="text-primary-600 mr-2">•</span>
-                Add relevant tags to help categorize and improve discoverability
-              </li>
+              <li>Be specific about the problem and impact</li>
+              <li>Include dates, times, and locations</li>
+              <li>Suggest solutions if you have ideas</li>
+              <li>Use respectful language</li>
+              <li>Add relevant tags</li>
             </ul>
           </div>
 
-          {/* Actions */}
           <div className="flex items-center justify-end gap-4 pt-6 border-t border-gray-200">
             <button
               type="button"

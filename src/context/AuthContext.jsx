@@ -29,23 +29,41 @@ export const AuthProvider = ({ children }) => {
     setIsLoading(false);
   }, []);
 
-  const login = async (email, password) => {
+  const login = async (email, password, requestedRole = 'citizen') => {
     setIsLoading(true);
-    
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Simple mock authentication
-    const foundUser = mockUsers.find(u => u.email === email);
-    if (foundUser && password === 'demo') {
-      setUser(foundUser);
-      localStorage.setItem('civiconnect_user', JSON.stringify(foundUser));
+
+    try {
+      const response = await fetch('http://localhost:5000/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          role: requestedRole,
+          action: 'login'
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const userData = data.user;
+        setUser(userData);
+        localStorage.setItem('civiconnect_user', JSON.stringify(userData));
+        setIsLoading(false);
+        return true;
+      } else {
+        const errorData = await response.json();
+        console.error('Login error:', errorData.message);
+        setIsLoading(false);
+        return false;
+      }
+    } catch (error) {
+      console.error('Auth Request failed:', error);
       setIsLoading(false);
-      return true;
+      return false;
     }
-    
-    setIsLoading(false);
-    return false;
   };
 
   const logout = () => {
@@ -55,24 +73,37 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     setIsLoading(true);
-    
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const newUser = {
-      ...userData,
-      id: Date.now().toString(),
-      joinedAt: new Date().toISOString(),
-      verified: false,
-    };
-    
-    // Add to mock users array
-    mockUsers.push(newUser);
-    setUser(newUser);
-    localStorage.setItem('civiconnect_user', JSON.stringify(newUser));
-    
-    setIsLoading(false);
-    return true;
+
+    try {
+      const response = await fetch('http://localhost:5000/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...userData,
+          action: 'register'
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const newUser = data.user;
+        setUser(newUser);
+        localStorage.setItem('civiconnect_user', JSON.stringify(newUser));
+        setIsLoading(false);
+        return true;
+      } else {
+        const errorData = await response.json();
+        console.error('Registration error:', errorData.message);
+        setIsLoading(false);
+        return false;
+      }
+    } catch (error) {
+      console.error('Registration Request failed:', error);
+      setIsLoading(false);
+      return false;
+    }
   };
 
   const updateUser = (userData) => {
@@ -84,13 +115,13 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      login, 
-      logout, 
-      register, 
-      updateUser, 
-      isLoading 
+    <AuthContext.Provider value={{
+      user,
+      login,
+      logout,
+      register,
+      updateUser,
+      isLoading
     }}>
       {children}
     </AuthContext.Provider>

@@ -12,19 +12,29 @@ const Login = () => {
     password: '',
     role: 'citizen',
     district: '',
+    number: '',
+    location: '',
+    pincode: '',
   });
   const [error, setError] = useState('');
 
   // 👉 helper to save login/register event to your Node + MongoDB backend
   const saveAuthEventToDb = async (payload) => {
     try {
-      await fetch('http://localhost:5000/api/login', {
+      console.log("📤 Saving auth event:", payload);
+      const response = await fetch('http://localhost:5000/api/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(payload),
       });
+      if (response.ok) {
+        console.log("✅ Auth event saved successfully");
+      } else {
+        const errData = await response.json();
+        console.error("❌ Auth event save failed:", errData);
+      }
     } catch (err) {
       console.error('Failed to save to MongoDB:', err);
     }
@@ -35,17 +45,14 @@ const Login = () => {
     setError('');
 
     if (isRegisterMode) {
-      // REGISTER FLOW
+      // REGISTER FLOW - Only require basic info for registration completion
       if (!formData.name || !formData.email || !formData.password) {
-        setError('Please fill in all required fields');
+        setError('Please fill in Name, Gmail and Password');
         return;
       }
 
       const success = await register({
-        name: formData.name,
-        email: formData.email,
-        role: formData.role,
-        district: formData.district || undefined,
+        ...formData
       });
 
       if (!success) {
@@ -53,11 +60,7 @@ const Login = () => {
       } else {
         // ✅ log registration event to MongoDB
         saveAuthEventToDb({
-          name: formData.name,
-          email: formData.email,
-          password: formData.password,
-          role: formData.role,
-          district: formData.district,
+          ...formData,
           action: 'register',
         });
       }
@@ -66,11 +69,10 @@ const Login = () => {
       const success = await login(formData.email, formData.password);
 
       if (!success) {
-        setError('Invalid email or password. Try demo accounts with password "demo"');
+        setError('Invalid Gmail or password. Try demo accounts with password "demo"');
       } else {
         // ✅ log login event to MongoDB
         saveAuthEventToDb({
-          name: formData.name || undefined,
           email: formData.email,
           password: formData.password,
           role: formData.role,
@@ -156,6 +158,52 @@ const Login = () => {
                     onChange={(e) => setFormData({ ...formData, district: e.target.value })}
                     className="input-field"
                     placeholder="Enter your district"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="number" className="block text-sm font-medium text-gray-700 mb-1">
+                      Phone Number
+                    </label>
+                    <input
+                      id="number"
+                      name="number"
+                      type="text"
+                      value={formData.number}
+                      onChange={(e) => setFormData({ ...formData, number: e.target.value })}
+                      className="input-field"
+                      placeholder="Phone"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="pincode" className="block text-sm font-medium text-gray-700 mb-1">
+                      Pincode
+                    </label>
+                    <input
+                      id="pincode"
+                      name="pincode"
+                      type="text"
+                      value={formData.pincode}
+                      onChange={(e) => setFormData({ ...formData, pincode: e.target.value })}
+                      className="input-field"
+                      placeholder="Pincode"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
+                    Address / Location
+                  </label>
+                  <input
+                    id="location"
+                    name="location"
+                    type="text"
+                    value={formData.location}
+                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                    className="input-field"
+                    placeholder="Enter your full address"
                   />
                 </div>
               </div>
@@ -244,8 +292,8 @@ const Login = () => {
                 }}
                 className="text-sm text-primary-600 hover:text-primary-800 font-medium transition-colors"
               >
-                {isRegisterMode 
-                  ? 'Already have an account? Sign in' 
+                {isRegisterMode
+                  ? 'Already have an account? Sign in'
                   : 'Need an account? Register here'
                 }
               </button>
@@ -269,7 +317,12 @@ const Login = () => {
                   <button
                     key={index}
                     type="button"
-                    onClick={() => setFormData({ ...formData, email: cred.email, password: 'demo' })}
+                    onClick={() => setFormData({
+                      ...formData,
+                      email: cred.email,
+                      password: 'demo',
+                      role: cred.role.toLowerCase()
+                    })}
                     className={`w-full text-left px-4 py-3 text-sm border rounded-lg transition-all duration-200 ${cred.color}`}
                   >
                     <div className="flex items-center justify-between">
@@ -282,7 +335,7 @@ const Login = () => {
                   </button>
                 ))}
               </div>
-              
+
               <p className="mt-4 text-xs text-center text-gray-500">
                 All demo accounts use password: <span className="font-mono bg-gray-100 px-1 rounded">demo</span>
               </p>

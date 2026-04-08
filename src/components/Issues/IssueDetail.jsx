@@ -1,5 +1,17 @@
 import React, { useState } from 'react';
-import { ArrowLeft, ThumbsUp, MessageSquare, MapPin, Calendar, User, Send, Flag, Clock, CreditCard as Edit, Trash2, Share2 } from 'lucide-react';
+import {
+  ArrowLeft,
+  ThumbsUp,
+  MessageSquare,
+  MapPin,
+  Calendar,
+  User,
+  Send,
+  Flag,
+  CreditCard as Edit,
+  Trash2,
+  Share2
+} from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getInitial } from '../../utils/string';
 import { useIssues } from '../../context/IssueContext';
@@ -27,7 +39,6 @@ const IssueDetail = ({ issue, onBack }) => {
     const date = new Date(dateString);
     const now = new Date();
     const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
-    
     if (diffInMinutes < 1) return 'Just now';
     if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
     if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
@@ -42,7 +53,6 @@ const IssueDetail = ({ issue, onBack }) => {
 
     upvoteIssue(issue.id);
 
-    // Add notification to issue creator
     if (user?.id !== issue.citizenId) {
       addNotification({
         userId: issue.citizenId,
@@ -57,7 +67,6 @@ const IssueDetail = ({ issue, onBack }) => {
 
   const handleSubmitResponse = async () => {
     if (!newResponse.trim()) return;
-
     if (!user) {
       alert('Please log in to submit a response.');
       return;
@@ -66,7 +75,6 @@ const IssueDetail = ({ issue, onBack }) => {
     setIsSubmitting(true);
 
     try {
-      // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 500));
 
       addResponse(issue.id, {
@@ -77,7 +85,6 @@ const IssueDetail = ({ issue, onBack }) => {
         content: newResponse,
       });
 
-      // Add notification to issue creator
       if (user?.id !== issue.citizenId) {
         addNotification({
           userId: issue.citizenId,
@@ -100,8 +107,7 @@ const IssueDetail = ({ issue, onBack }) => {
 
   const handleStatusChange = (newStatus) => {
     updateIssue(issue.id, { status: newStatus });
-    
-    // Add notification to issue creator
+
     addNotification({
       userId: issue.citizenId,
       title: 'Issue Status Updated',
@@ -119,7 +125,8 @@ const IssueDetail = ({ issue, onBack }) => {
     }
   };
 
-  const canChangeStatus = user?.role === 'politician' || user?.role === 'admin' || user?.role === 'moderator';
+  const canChangeStatus =
+    user?.role === 'politician' || user?.role === 'admin' || user?.role === 'moderator';
   const canRespond = user?.role !== 'citizen' || user?.id === issue.citizenId;
   const canDelete = user?.role === 'admin' || user?.id === issue.citizenId;
   const canEdit = user?.id === issue.citizenId && issue.status === 'submitted';
@@ -191,9 +198,23 @@ const IssueDetail = ({ issue, onBack }) => {
                 {issue.description}
               </p>
             </div>
+
+            {/* 🔥 Attachments show here */}
+            {issue.attachments && issue.attachments.length > 0 && (
+              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {issue.attachments.map((src, idx) => (
+                  <img
+                    key={idx}
+                    src={src}
+                    alt="Issue Attachment"
+                    className="w-full h-48 object-cover rounded-lg shadow"
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Responses */}
+          {/* Responses (unchanged) */}
           <div className="card p-8">
             <div className="flex items-center justify-between mb-8">
               <h3 className="text-xl font-semibold text-gray-900">
@@ -210,7 +231,6 @@ const IssueDetail = ({ issue, onBack }) => {
               )}
             </div>
 
-            {/* Response Form */}
             {showResponseForm && (
               <div className="mb-8 p-6 bg-gray-50 rounded-lg border border-gray-200">
                 <textarea
@@ -255,7 +275,6 @@ const IssueDetail = ({ issue, onBack }) => {
               </div>
             )}
 
-            {/* Response List */}
             <div className="space-y-6">
               {issue.responses.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
@@ -293,9 +312,8 @@ const IssueDetail = ({ issue, onBack }) => {
           </div>
         </div>
 
-        {/* Sidebar */}
+        {/* Sidebar (unchanged) */}
         <div className="space-y-6">
-          {/* Actions */}
           <div className="card p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Actions</h3>
             <div className="space-y-3">
@@ -306,26 +324,22 @@ const IssueDetail = ({ issue, onBack }) => {
                 <ThumbsUp size={18} />
                 Upvote ({issue.upvotes})
               </button>
-              
               <button className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors border border-blue-200 font-medium">
                 <Share2 size={18} />
                 Share Issue
               </button>
-              
               <button className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors border border-red-200 font-medium">
                 <Flag size={18} />
                 Report Issue
               </button>
-              
               {canEdit && (
                 <button className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200 font-medium">
                   <Edit size={18} />
                   Edit Issue
                 </button>
               )}
-              
               {canDelete && (
-                <button 
+                <button
                   onClick={handleDeleteIssue}
                   className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors border border-red-200 font-medium"
                 >
@@ -336,7 +350,6 @@ const IssueDetail = ({ issue, onBack }) => {
             </div>
           </div>
 
-          {/* Status Management */}
           {canChangeStatus && (
             <div className="card p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Manage Status</h3>
@@ -358,7 +371,6 @@ const IssueDetail = ({ issue, onBack }) => {
             </div>
           )}
 
-          {/* Issue Details */}
           <div className="card p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Issue Details</h3>
             <div className="space-y-4 text-sm">

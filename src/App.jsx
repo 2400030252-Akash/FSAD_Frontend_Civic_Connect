@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { IssueProvider } from './context/IssueContext';
 import { NotificationProvider } from './context/NotificationContext';
-import Login from './components/Auth/Login';
 import Header from './components/Layout/Header';
 import Sidebar from './components/Layout/Sidebar';
 import Dashboard from './components/Dashboard/Dashboard';
@@ -14,14 +13,37 @@ import Settings from './components/Settings/Settings';
 import Representatives from './components/Representatives/Representatives';
 import Discussions from './components/Discussions/Discussions';
 import Moderation from './components/Moderation/Moderation';
+import RoleSelection from './components/Auth/RoleSelection';
+import CitizenAuth from './components/Auth/CitizenAuth';
+import PoliticianAuth from './components/Auth/PoliticianAuth';
+import AdminAuth from './components/Auth/AdminAuth';
+import AdminTerminal from './components/Admin/AdminTerminal';
 
 function AppContent() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [authStep, setAuthStep] = useState('role-selection'); // 'role-selection', 'citizen-auth', 'politician-auth', 'admin-auth'
 
   if (!user) {
-    return <Login />;
+    switch (authStep) {
+      case 'role-selection':
+        return <RoleSelection onSelectRole={(role) => setAuthStep(`${role}-auth`)} />;
+      case 'citizen-auth':
+        return <CitizenAuth onBack={() => setAuthStep('role-selection')} />;
+      case 'politician-auth':
+        return <PoliticianAuth onBack={() => setAuthStep('role-selection')} />;
+      case 'admin-auth':
+        return <AdminAuth onBack={() => setAuthStep('role-selection')} />;
+      default:
+        return <RoleSelection onSelectRole={(role) => setAuthStep(`${role}-auth`)} />;
+    }
+  }
+
+  // If user is admin, show the new Terminal instead of the standard layout
+  if (user?.role === 'admin') {
+    console.log("✅ Admin role detected, switching to AdminTerminal", user);
+    return <AdminTerminal />;
   }
 
   const renderContent = () => {
@@ -52,19 +74,19 @@ function AppContent() {
 
   return (
     <div className="h-screen bg-gray-50 flex overflow-hidden">
-      <Sidebar 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
         isMobileMenuOpen={isMobileMenuOpen}
         setIsMobileMenuOpen={setIsMobileMenuOpen}
       />
-      
+
       <div className="flex-1 flex flex-col min-w-0">
-        <Header 
-          onMenuClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} 
+        <Header
+          onMenuClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           isMobileMenuOpen={isMobileMenuOpen}
         />
-        
+
         <main className="flex-1 overflow-y-auto p-6">
           <div className="max-w-7xl mx-auto">
             {renderContent()}
